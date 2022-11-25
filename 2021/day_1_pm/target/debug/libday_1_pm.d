@@ -1,0 +1,1 @@
+/Users/vidar.magnusson/Documents/projects/vmcorp/advent-of-code-2022/2021/day_1_pm/target/debug/libday_1_pm.dylib: /Users/vidar.magnusson/Documents/projects/vmcorp/advent-of-code-2022/2021/day_1_pm/src/lib.rs
