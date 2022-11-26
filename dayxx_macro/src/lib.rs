@@ -1,14 +1,21 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, LitInt};
+use syn::{parse_macro_input, punctuated::Punctuated, LitInt, Token};
 
 extern crate proc_macro;
 
 #[proc_macro]
-pub fn generate_day(day: TokenStream) -> TokenStream {
-    let day: u32 = parse_macro_input!(day as LitInt)
-        .base10_parse()
-        .expect("Failed to parse day arg");
+pub fn generate_day(day_year: TokenStream) -> TokenStream {
+    let day_year =
+        parse_macro_input!(day_year with Punctuated::<LitInt, Token![,]>::parse_terminated)
+            .into_iter()
+            .map(|l| l.base10_parse().expect("Failed to parse number"))
+            .collect::<Vec<u32>>();
+    if day_year.len() != 2 {
+        panic!("Invalid number of arguments provided, expected 2 a day and a year");
+    }
+    let year = day_year.first().expect("No day provided");
+    let day = day_year.get(1).expect("No year provided");
 
     TokenStream::from(quote! {
         use std::{
@@ -18,12 +25,10 @@ pub fn generate_day(day: TokenStream) -> TokenStream {
             path::Path,
         };
 
-        mod solution;
-
         use reqwest::blocking::Client;
         use solution::{solve_part_one, solve_part_two};
 
-        const YEAR: u32 = 2021;
+        const YEAR: u32 = #year;
         const DAY: u32 = #day;
         const SESSION_COOKIE_FILE: &str = "/home/vidde/.aoc_session_cookie";
 
@@ -35,7 +40,7 @@ pub fn generate_day(day: TokenStream) -> TokenStream {
         impl Part {
             fn from_env() -> Self {
                 match env::var("part")
-                    .expect("Failed to part environment variable")
+                    .expect("Failed to read 'part' environment variable")
                     .as_str()
                 {
                     "part1" => Self::One,
