@@ -194,6 +194,7 @@ dependencies = [
 [[package]]
 name = "generate_aoc_day"
 version = "0.1.0"
+source = "git+https://github.com/ViddeM/aoc-macro?branch=main#3c84566fa962e8c60d703c5c3ee676acc52cf767"
 dependencies = [
  "proc-macro2",
  "quote",
