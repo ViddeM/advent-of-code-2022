@@ -6,6 +6,7 @@ version = 3
 name = "aoc"
 version = "0.1.0"
 dependencies = [
+ "generate_aoc_day",
  "reqwest",
 ]
 
@@ -188,6 +189,15 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "generate_aoc_day"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
