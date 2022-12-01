@@ -1,0 +1,66 @@
+fn main() {
+    let file = read_file("input.txt");
+    let lines = split_string(file, "
+");
+
+    let curr_elf = 0;
+    let highest_elf = 0;
+    
+    for (line in lines) {
+        if (line == "") {
+            if (curr_elf > highest_elf) {
+                highest_elf = curr_elf;
+            }
+            curr_elf = 0;
+        } else {
+            let parsed = parse_int(line);
+            curr_elf = curr_elf + parsed;
+        }
+    }
+    if (curr_elf > highest_elf) {
+        highest_elf = curr_elf;
+    }
+
+    print_string("PART 1:");
+    print_number(highest_elf);
+
+    
+    // I regret not implementing a sort function in the standard lib :(
+    let second_highest_elf = 0;
+    curr_elf = 0;
+    for (line in lines) {
+        // Something appears to be bugged with the `&&` operator :/
+        if (line == "") {
+            if (curr_elf > second_highest_elf) {
+                if (curr_elf != highest_elf) {
+                    second_highest_elf = curr_elf;
+                }
+            }
+            curr_elf = 0;
+        } else {
+            let parsed = parse_int(line);
+            curr_elf = curr_elf + parsed;
+        }
+    }
+
+    let third_highest_elf = 0;
+    curr_elf = 0;
+    for (line in lines) {
+        if (line == "") {
+            if (curr_elf > third_highest_elf) {
+                if (curr_elf != highest_elf) {
+                    if (curr_elf != second_highest_elf) {
+                        third_highest_elf = curr_elf;
+                    }
+                }
+            }
+            curr_elf = 0;
+        } else {
+            let parsed = parse_int(line);
+            curr_elf = curr_elf + parsed;
+        }
+    }
+
+    print_string("PART 2:");
+    print_number(highest_elf + second_highest_elf + third_highest_elf);
+}
