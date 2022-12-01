@@ -1,3 +1,5 @@
+#![feature(test)]
+
 use generate_aoc_day::generate_day;
 
 mod solution;
