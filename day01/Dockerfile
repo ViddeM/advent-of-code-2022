@@ -1,8 +1,9 @@
-FROM rust:1.65
+FROM rust:1.65 as builder
 WORKDIR /usr/src/aoc
 COPY . .
-RUN cargo install vm_lang
+RUN cargo install --path .
 
+FROM rust:1.65-slim
+COPY --from=builder /usr/local/cargo/bin/aoc /usr/local/bin/aoc
 COPY input.txt .
-
-CMD ["vm_lang", "prog.gr"]
+CMD ["aoc"]
