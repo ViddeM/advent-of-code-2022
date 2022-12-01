@@ -21,7 +21,6 @@ fn main() {
         highest_elf = curr_elf;
     }
 
-    print_string("PART 1:");
     print_number(highest_elf);
 
     
@@ -61,6 +60,5 @@ fn main() {
         }
     }
 
-    print_string("PART 2:");
     print_number(highest_elf + second_highest_elf + third_highest_elf);
 }
