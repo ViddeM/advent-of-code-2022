@@ -1,10 +1,8 @@
-use std::str::Bytes;
-
 pub fn parse<'a>(input: &'a str) -> impl Iterator<Item = (u8, u8)> + 'a {
-    input.lines().map(|l| {
-        let mut a = l.bytes().into_iter();
-        (a.next().unwrap(), a.skip(1).next().unwrap())
-    })
+    input
+        .as_bytes()
+        .array_chunks()
+        .map(|[abc, _, xyz, _]| (*abc, *xyz))
 }
 
 pub fn solve_part_one<'a>(input: impl Iterator<Item = (u8, u8)>) -> String {
