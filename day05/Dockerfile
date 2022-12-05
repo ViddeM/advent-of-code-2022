@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly as builder
 WORKDIR /usr/src/aoc
 COPY . .
-RUN cargo install --path .
+RUN cargo install --path . --no-default-features
 
 FROM rustlang/rust:nightly-slim
 COPY --from=builder /usr/local/cargo/bin/aoc /usr/local/bin/aoc
