@@ -2,6 +2,7 @@ pub fn parse<'a>(input: &'a str) -> &[u8] {
     input.as_bytes()
 }
 
+#[inline(always)]
 fn find_packets(input: &[u8], window_size: usize) -> u32 {
     'outer: for (index, arr) in input.windows(window_size).enumerate() {
         for (i1, a) in arr.iter().enumerate() {
