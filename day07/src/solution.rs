@@ -1,15 +1,9 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-enum FileType {
-    Dir,
+pub enum File {
+    Dir(HashMap<String, File>),
     File(u32),
-}
-
-#[derive(Debug, Clone)]
-struct File {
-    name: String,
-    variant: FileType,
 }
 
 #[derive(Debug, Clone)]
@@ -39,136 +33,110 @@ pub fn parse<'a>(input: &'a str) -> impl Iterator<Item = Input> + 'a {
     })
 }
 
-fn handle_cd<'a>(
-    arg: &'a str,
-    dir_map: &mut HashMap<String, Vec<File>>,
-    parent_map: &mut HashMap<String, Option<String>>,
-    curr_dir: &'a str,
-) -> String {
-    let s = match arg {
-        ".." => {
-            if let Some(dir) = parent_map
-                .get(curr_dir)
-                .expect("Failed to find current dir in map!")
-                .clone()
-            {
-                dir
-            } else {
-                String::from("/")
-            }
+#[inline(always)]
+pub fn get_parent_map<'a>(
+    path_stack: &Vec<String>,
+    root_file: &'a mut File,
+) -> &'a mut HashMap<String, File> {
+    let mut curr_file = root_file;
+    for path in path_stack.iter() {
+        match curr_file {
+            File::Dir(map) => curr_file = map.get_mut(path.as_str()).unwrap(),
+            File::File(_) => panic!("Cannot find parent file in FILE"),
         }
-        "/" => "/".to_string(),
-        dir => {
-            if parent_map.contains_key(dir) == false {
-                parent_map.insert(
-                    dir.to_string(),
-                    if curr_dir == "/" {
-                        None
-                    } else {
-                        Some(curr_dir.to_string())
-                    },
-                );
-            }
+    }
 
-            let mut files = if let Some(files) = dir_map.remove(curr_dir) {
-                files
-            } else {
-                vec![]
-            };
-
-            files.push(File {
-                name: dir.to_string(),
-                variant: FileType::Dir,
-            });
-            dir_map.insert(curr_dir.to_string(), files);
-
-            dir.to_string()
-        }
-    };
-
-    s
+    match curr_file {
+        File::Dir(map) => map,
+        File::File(_) => panic!("Parent file is not a directory?"),
+    }
 }
 
-fn find_size_of_dir<'a>(
-    name: &'a str,
-    dir_map: &HashMap<String, Vec<File>>,
+fn find_dir_sizes(
+    file: &mut File,
     dir_size_map: &mut HashMap<String, u32>,
+    curr_file_path: String,
 ) -> u32 {
-    if let Some(files) = dir_map.get(name) {
-        files
-            .iter()
-            .map(|f| match f.variant {
-                FileType::Dir => {
-                    if let Some(size) = dir_size_map.get(&f.name) {
-                        size.clone()
-                    } else {
-                        let size = find_size_of_dir(&f.name, dir_map, dir_size_map);
-                        dir_size_map.insert(f.name.clone(), size);
-                        size
+    match file {
+        File::Dir(map) => {
+            let size = map
+                .into_iter()
+                .map(|(dir_name, dir)| {
+                    find_dir_sizes(dir, dir_size_map, format!("{curr_file_path}/{dir_name}"))
+                })
+                .sum();
+            dir_size_map.insert(curr_file_path, size);
+            size
+        }
+        File::File(size) => size.clone(),
+    }
+}
+
+fn find_root_sizes(root_file: &mut File) -> HashMap<String, u32> {
+    let mut dir_size_map: HashMap<String, u32> = HashMap::new();
+    match root_file {
+        File::Dir(root_map) => {
+            for (_, file) in root_map {
+                find_dir_sizes(file, &mut dir_size_map, String::new());
+            }
+        }
+        File::File(_) => panic!("Root is a file not a dir!??!?!"),
+    }
+    dir_size_map
+}
+
+fn create_root_file<'a>(input: impl Iterator<Item = Input>) -> File {
+    let mut root_file = File::Dir(HashMap::new());
+
+    let mut path_stack: Vec<String> = vec![];
+    let mut curr_path = "/".to_string();
+    let mut curr_map: HashMap<String, File> = HashMap::new();
+
+    for i in input {
+        match i {
+            Input::Cd(arg) => {
+                let parent_map = get_parent_map(&path_stack, &mut root_file);
+                parent_map.insert(curr_path.to_string(), File::Dir(curr_map));
+
+                match arg.as_str() {
+                    ".." => {
+                        let prev_path = path_stack.pop().unwrap();
+                        curr_path = prev_path;
+                    }
+                    "/" => {
+                        path_stack = vec![];
+                        curr_path = "/".to_string();
+                    }
+                    _ => {
+                        path_stack.push(curr_path.clone());
+                        curr_path = arg;
                     }
                 }
-                FileType::File(size) => size,
-            })
-            .sum()
-    } else {
-        0
+
+                let parent_map = get_parent_map(&path_stack, &mut root_file);
+                curr_map = match parent_map.remove(&curr_path).unwrap() {
+                    File::Dir(map) => map,
+                    File::File(_) => panic!("Expected dir, got file"),
+                }
+            }
+            Input::Ls => { /* Don't do anything? */ }
+            Input::DirPrint(dir_name) => {
+                curr_map.insert(dir_name, File::Dir(HashMap::new()));
+            }
+            Input::FilePrint(file_size, file_name) => {
+                curr_map.insert(file_name, File::File(file_size));
+            }
+        };
     }
+    let parent_map = get_parent_map(&path_stack, &mut root_file);
+    parent_map.insert(curr_path.to_string(), File::Dir(curr_map));
+
+    root_file
 }
 
 pub fn solve_part_one<'a>(input: impl Iterator<Item = Input>) -> String {
-    let mut parent_map: HashMap<String, Option<String>> = HashMap::new();
-    parent_map.insert("/".to_string(), None);
-    let mut dir_map: HashMap<String, Vec<File>> = HashMap::new();
-    let mut curr_dir = String::from("/");
-    input.for_each(|i| match i {
-        Input::Cd(arg) => curr_dir = handle_cd(&arg, &mut dir_map, &mut parent_map, &curr_dir),
-        Input::Ls => {
-            // Don't do anything?
-        }
-        Input::DirPrint(dir) => {
-            if parent_map.contains_key(&dir) == false {
-                parent_map.insert(
-                    dir.clone(),
-                    if curr_dir == "/" {
-                        None
-                    } else {
-                        Some(curr_dir.clone())
-                    },
-                );
-            }
-
-            let mut files = if let Some(files) = dir_map.remove(&curr_dir) {
-                files
-            } else {
-                vec![]
-            };
-
-            files.push(File {
-                name: dir.clone(),
-                variant: FileType::Dir,
-            });
-            dir_map.insert(curr_dir.clone(), files);
-        }
-        Input::FilePrint(size, name) => {
-            let mut files = if let Some(files) = dir_map.remove(&curr_dir) {
-                files
-            } else {
-                vec![]
-            };
-
-            files.push(File {
-                name: name.clone(),
-                variant: FileType::File(size),
-            });
-            dir_map.insert(curr_dir.clone(), files);
-        }
-    });
-
-    let mut dir_size_map: HashMap<String, u32> = HashMap::new();
-    for dir in dir_map.keys() {
-        let size = find_size_of_dir(dir.as_str(), &dir_map, &mut dir_size_map);
-        dir_size_map.insert(dir.clone(), size);
-    }
+    let mut root_file = create_root_file(input);
+    let dir_size_map = find_root_sizes(&mut root_file);
 
     let solution: u32 = dir_size_map
         .into_iter()
@@ -179,6 +147,30 @@ pub fn solve_part_one<'a>(input: impl Iterator<Item = Input>) -> String {
     format!("{solution}")
 }
 
+const TOTAL_SPACE: u32 = 70000000;
+const REQUIRED_DISK_SPACE: u32 = 30000000;
+
 pub fn solve_part_two<'a>(input: impl Iterator<Item = Input>) -> String {
-    todo!("Part two is not yet implemented");
+    let mut root_file = create_root_file(input);
+
+    let dir_size_map = find_root_sizes(&mut root_file);
+
+    // println!("DIR SIZE MAP {dir_size_map:#?}");
+
+    let total_used_space = dir_size_map.get("").unwrap().clone();
+    // println!("total_used_space {total_used_space}");
+    // println!("total_space      {TOTAL_SPACE}");
+    let free_space = TOTAL_SPACE - total_used_space;
+    // println!("free_space       {free_space}");
+    let space_to_free = REQUIRED_DISK_SPACE - free_space;
+    // println!("space_to_free    {space_to_free}");
+
+    let mut closest_val = u32::MAX;
+    for (_, size) in dir_size_map {
+        if size >= space_to_free && size < closest_val {
+            closest_val = size;
+        }
+    }
+
+    format!("{closest_val}")
 }
