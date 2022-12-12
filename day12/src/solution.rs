@@ -20,7 +20,7 @@ impl PartialOrd for QueueEntry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Position {
     x: usize,
     y: usize,
@@ -95,37 +95,44 @@ fn get_neighbours(x: usize, y: usize, width: usize, height: usize) -> Vec<(usize
     neighbours
 }
 
-pub fn solve_part_one<'a>(input: Map) -> String {
+#[inline(always)]
+fn path_find(
+    start_pos: Position,
+    dest_pos: &Position,
+    map: &Vec<Vec<u8>>,
+    width: usize,
+    height: usize,
+) -> usize {
     let mut heap: BinaryHeap<QueueEntry> = BinaryHeap::new();
-    let mut dist_map: HashMap<(usize, usize), usize> = HashMap::new();
-    let mut prev_map: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
+    let mut dist_map: HashMap<Position, usize> = HashMap::new();
+    let mut prev_map: HashMap<Position, Position> = HashMap::new();
 
-    for (y, row) in input.map.iter().enumerate() {
+    for (y, row) in map.iter().enumerate() {
         for (x, _) in row.iter().enumerate() {
-            dist_map.insert((x, y), usize::MAX);
+            dist_map.insert(Position { x, y }, usize::MAX);
         }
     }
 
-    dist_map.insert((input.start_pos.x, input.start_pos.y), 0);
+    dist_map.insert(start_pos.clone(), 0);
     heap.push(QueueEntry {
-        x: input.start_pos.x,
-        y: input.start_pos.y,
-        height: input.map[input.start_pos.y][input.start_pos.x],
+        x: start_pos.x,
+        y: start_pos.y,
+        height: map[start_pos.y][start_pos.x],
         cost: 0,
     });
 
     while let Some(qe) = heap.pop() {
-        if qe.x == input.destination.x && qe.y == input.destination.y {
+        if qe.x == dest_pos.x && qe.y == dest_pos.y {
             break;
         }
 
-        if qe.cost > dist_map[&(qe.x, qe.y)] {
+        if qe.cost > dist_map[&Position { x: qe.x, y: qe.y }] {
             // We have found a better alternative for this pos
             continue;
         }
 
-        for (x, y) in get_neighbours(qe.x, qe.y, input.width, input.height) {
-            let height = input.map[y][x];
+        for (x, y) in get_neighbours(qe.x, qe.y, width, height) {
+            let height = map[y][x];
             if height <= qe.height + 1 {
                 let next = QueueEntry {
                     x,
@@ -134,27 +141,56 @@ pub fn solve_part_one<'a>(input: Map) -> String {
                     cost: qe.cost + 1,
                 };
 
-                if next.cost < dist_map[&(next.x, next.y)] {
+                let next_pos = Position {
+                    x: next.x,
+                    y: next.y,
+                };
+
+                if next.cost < dist_map[&next_pos] {
                     heap.push(next);
-                    dist_map.insert((next.x, next.y), next.cost);
-                    prev_map.insert((next.x, next.y), (qe.x, qe.y));
+                    dist_map.insert(next_pos.clone(), next.cost);
+                    prev_map.insert(next_pos, Position { x: qe.x, y: qe.y });
                 }
             }
         }
     }
 
+    dist_map[&dest_pos]
+}
+
+pub fn solve_part_one<'a>(input: Map) -> String {
+    let steps = path_find(
+        input.start_pos,
+        &input.destination,
+        &input.map,
+        input.width,
+        input.height,
+    );
+
     // Should have reached goal!
-    let steps = dist_map[&(input.destination.x, input.destination.y)];
-
-    // let mut curr = (input.destination.x, input.destination.y);
-    // while let Some(&(pre_x, pre_y)) = prev_map.get(&curr) {
-    //     println!("({pre_x},{pre_y}) -- {}", input.map[pre_y][pre_x]);
-    //     curr = (pre_x, pre_y);
-    // }
-
     format!("{steps}")
 }
 
 pub fn solve_part_two<'a>(input: Map) -> String {
-    todo!("Part two is not yet implemented");
+    let mut shortest_path = usize::MAX;
+
+    for (y, row) in input.map.iter().enumerate() {
+        for (x, &height) in row.iter().enumerate() {
+            if height == 0 {
+                let steps = path_find(
+                    Position { x, y },
+                    &input.destination,
+                    &input.map,
+                    input.width,
+                    input.height,
+                );
+
+                if steps < shortest_path {
+                    shortest_path = steps;
+                }
+            }
+        }
+    }
+
+    format!("{shortest_path}")
 }
