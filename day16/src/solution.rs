@@ -74,6 +74,7 @@ fn calculate_maximum_throughput(
 }
 
 pub fn solve_part_one<'a>(input: Valves) -> String {
+    todo!("Finish part 1");
     let throughput =
         calculate_maximum_throughput(&input, INITIAL_MINUTES, &"AA".to_string(), &vec![]);
 
